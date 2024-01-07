@@ -2,20 +2,17 @@ package com.knightleo.loadingButton
 
 import android.animation.ValueAnimator
 import android.content.Context
-import android.content.res.Resources.NotFoundException
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.ColorFilter
 import android.graphics.PixelFormat
 import android.graphics.drawable.Animatable
 import android.graphics.drawable.Drawable
-import android.graphics.drawable.LayerDrawable
 import android.os.DeadObjectException
 import android.util.AttributeSet
 import android.view.animation.LinearInterpolator
 import androidx.appcompat.widget.AppCompatButton
 import androidx.core.content.res.ResourcesCompat
-import androidx.core.content.res.getDrawableOrThrow
 
 /**
  * A button that can show a loading icon, extended from [AppCompatButton]
@@ -90,7 +87,7 @@ class LoadingButton : AppCompatButton {
                 0)
         ) {
             padding =
-                getDimension(R.styleable.LoadingButton_circularDrawablePadding, 30f).toInt()
+                getDimension(R.styleable.LoadingButton_circularDrawablePadding, 40f).toInt()
             if(getInt(R.styleable.LoadingButton_circularDrawableType, 0) == 0) {
                 val loaderColor =
                     getColor(R.styleable.LoadingButton_circularDrawableColor, Color.GRAY)
@@ -180,6 +177,8 @@ class LoadingButton : AppCompatButton {
      *
      * If the new drawable implements the interface [Animatable], this function starts the animation,
      * (this only happens if the autoRotate parameter is set to false)
+     *
+     * WARNING: Do not set this to a vector drawable, else it will cause a [DeadObjectException]
      *
      * @param drawable The drawable to be shown when loading
      * @param setAutoRotate Whether or not it should be rotated, should be false if you're already
