@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="LoadingButton">
+        <attr name="circularDrawableType" format="enum">
+            <enum name="circularDrawable" value="0"/>
+            <enum name="customDrawable" value="1"/>
+        </attr>
+        <attr name="circularDrawableImage" format="reference"/>
+        <attr name="circularDrawableColor" format="color"/>
+        <attr name="circularDrawablePadding" format="dimension"/>
+        <attr name="circularDrawableWidth" format="float"/>
+        <attr name="circularDrawableAutoRotate" format="boolean"/>
+    </declare-styleable>
+</resources>
