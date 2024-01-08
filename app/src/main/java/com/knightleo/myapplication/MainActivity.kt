@@ -3,8 +3,6 @@ package com.knightleo.myapplication
 import android.os.Bundle
 import androidx.appcompat.app.AppCompatActivity
 import com.knightleo.loadingButton.LoadingButton
-import java.util.Timer
-import java.util.TimerTask
 
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -16,16 +14,16 @@ class MainActivity : AppCompatActivity() {
         loadingButton.setOnClickListener {
             loadingButton.loading = true
             loadingButton.isEnabled = false
-            Timer().schedule(
-                object : TimerTask() {
-                    override fun run() =
-                        runOnUiThread {
-                            loadingButton.isEnabled = true
-                            loadingButton.loading = false
-                        }
-                },
-                7000
-            )
+//            Timer().schedule(
+//                object : TimerTask() {
+//                    override fun run() =
+//                        runOnUiThread {
+//                            loadingButton.isEnabled = true
+//                            loadingButton.loading = false
+//                        }
+//                },
+//                10_000
+//            )
         }
     }
 }

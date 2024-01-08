@@ -7,24 +7,27 @@ import android.graphics.Color
 import android.graphics.ColorFilter
 import android.graphics.PixelFormat
 import android.graphics.drawable.Animatable
+import android.graphics.drawable.AnimationDrawable
 import android.graphics.drawable.Drawable
 import android.os.DeadObjectException
+import android.os.SystemClock
 import android.util.AttributeSet
 import android.view.animation.LinearInterpolator
 import androidx.appcompat.widget.AppCompatButton
 import androidx.core.content.res.ResourcesCompat
+import java.security.InvalidParameterException
 
 /**
  * A button that can show a loading icon, extended from [AppCompatButton]
  *
  * Optional styles to customize:
- * - [R.styleable.LoadingButton_circularDrawableType]: What should be shown by default, a image with a rotating
- * animation, or a circular drawable with multiple animating points
- * - [R.styleable.LoadingButton_circularDrawableImage]: The image to show when the type is set to customAnimation
+ * - [R.styleable.LoadingButton_circularDrawableType]: The loader that will be shown, there is a standard circle spinning
+ * loading icon, a tiled spinning circle, and the last option loads whatever src you passed in [R.styleable.LoadingButton_android_src]
+ * - [R.styleable.LoadingButton_android_src]: The image to show when the type is set to useSrc
  * WARNING: Do not pass a vector asset to this component, else it will cause a [DeadObjectException]
  * - [R.styleable.LoadingButton_circularDrawablePadding]: The padding of the button for the loading icon
  * - [R.styleable.LoadingButton_circularDrawableAutoRotate]: Whether of not you want a rotation animation on
- * the drawable in case the type is set to customDrawable (default: true)
+ * the drawable in case the type is set to customDrawable (default: false)
  * - [R.styleable.LoadingButton_circularDrawableColor]: The color of the circularDrawable when the type has been set
  * to circularDrawable (default: [Color.GRAY])
  * - [R.styleable.LoadingButton_circularDrawableWidth]: The width of the circularDrawable line that is shown when loading,
@@ -60,7 +63,6 @@ class LoadingButton : AppCompatButton {
         private fun setCustomDrawable(loadingButton: LoadingButton) {
             loadingButton.setNewLoaderDrawable(CircularDrawableAnimated(Color.WHITE, 5f))
         }
-
         private val defaultDrawableRes
             get() = R.drawable.ic_loader
     }
@@ -70,10 +72,27 @@ class LoadingButton : AppCompatButton {
     private lateinit var canvas: Canvas
     private lateinit var loaderDrawable: Lazy<Drawable>
     private var padding: Int = 0
-    private var isImage = false
+    private val animCallBack =
+        object : Drawable.Callback {
+            override fun invalidateDrawable(p0: Drawable) {
+                this@LoadingButton.postInvalidateDelayed(105)
+            }
+            override fun scheduleDrawable(p0: Drawable, p1: Runnable, p2: Long) {
+                this@LoadingButton.postDelayed(p1, p2 - SystemClock.uptimeMillis())
+            }
+            override fun unscheduleDrawable(p0: Drawable, p1: Runnable) {
+                this@LoadingButton.removeCallbacks(p1)
+            }
+        }
 
     var loading: Boolean = false
         set(value) {
+            (loaderDrawable as? Animatable)?.let {
+                if(value) {
+                    it.start()
+                }
+                else it.stop()
+            }
             field = value
             showLoading(value)
         }
@@ -87,36 +106,51 @@ class LoadingButton : AppCompatButton {
                 0)
         ) {
             padding =
-                getDimension(R.styleable.LoadingButton_circularDrawablePadding, 40f).toInt()
-            if(getInt(R.styleable.LoadingButton_circularDrawableType, 0) == 0) {
-                val loaderColor =
-                    getColor(R.styleable.LoadingButton_circularDrawableColor, Color.GRAY)
-                val borderWidth =
-                    getFloat(R.styleable.LoadingButton_circularDrawableWidth, 5f)
-                loaderDrawable = lazy {
-                    CircularDrawableAnimated(loaderColor, borderWidth).apply {
-                        setupPosition(padding)
-                        start()
+                getDimension(R.styleable.LoadingButton_circularDrawablePadding, 30f).toInt()
+            loaderDrawable = when(getInt(R.styleable.LoadingButton_circularDrawableType, 0)) {
+                0 -> {
+                    val loaderColor =
+                        getColor(R.styleable.LoadingButton_circularDrawableColor, Color.GRAY)
+                    val borderWidth =
+                        getFloat(R.styleable.LoadingButton_circularDrawableWidth, 5f)
+                    lazy {
+                        CircularDrawableAnimated(loaderColor, borderWidth).apply {
+                            setupPosition(padding)
+                            start()
+                        }
                     }
                 }
-            } else {
-                isImage = true
-                val rotateImage =
-                    getBoolean(
-                        R.styleable.LoadingButton_circularDrawableAutoRotate,
-                        true
-                    )
-                val img = getDrawable(R.styleable.LoadingButton_circularDrawableImage) ?:
-                    ResourcesCompat.getDrawable(resources, defaultDrawableRes, null)!!
-                loaderDrawable =
-                    if(rotateImage) lazy {
-                        img.setupPosition(padding)
-                        img.toRotationAnimatedDrawable()
-                    } else lazy {
-                        img.setupPosition(padding)
-                        img
+                1 -> {
+                    val img = (ResourcesCompat.getDrawable(
+                        resources,
+                        R.drawable.loader,
+                        null
+                    ) as AnimationDrawable)
+                    lazy {
+                        img.apply {
+                            setupPosition(padding)
+                            callback = animCallBack
+                            start()
+                        }
                     }
+                }
+                2 -> {
+                    val rotateImage =
+                        getBoolean(
+                            R.styleable.LoadingButton_circularDrawableAutoRotate,
+                            false
+                        )
+                    val img = getDrawable(R.styleable.LoadingButton_android_src)
+                        ?: ResourcesCompat.getDrawable(resources, defaultDrawableRes, null)!!
+                    lazy {
+                        img.setupPosition(padding)
+                        if(rotateImage) img.toRotationAnimatedDrawable()
+                        else img
+                    }
+                }
+                else -> throw InvalidParameterException()
             }
+            recycle()
         }
     }
     private fun Drawable.setupPosition(padding: Int) {
@@ -137,9 +171,9 @@ class LoadingButton : AppCompatButton {
     }
 
     override fun onDraw(canvas: Canvas) {
-        super.onDraw(canvas)
         if(!this::canvas.isInitialized) this.canvas = canvas
         showLoading(loading, canvas)
+        super.onDraw(canvas)
     }
 
     private fun showLoading(loading: Boolean = this.loading, canvas: Canvas = this.canvas) {
@@ -189,13 +223,11 @@ class LoadingButton : AppCompatButton {
         drawable: Drawable,
         setAutoRotate: Boolean = false
     ) {
-        loaderDrawable = lazy {
-            drawable.setupPosition(padding)
-            if(setAutoRotate) drawable.toRotationAnimatedDrawable()
-            else {
-                if(drawable is Animatable) drawable.start()
-                drawable
+        loaderDrawable =
+            lazy {
+                drawable.setupPosition(padding)
+                if(setAutoRotate) drawable.toRotationAnimatedDrawable()
+                else drawable
             }
-        }
     }
 }

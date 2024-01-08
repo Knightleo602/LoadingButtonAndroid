@@ -3,9 +3,10 @@
     <declare-styleable name="LoadingButton">
         <attr name="circularDrawableType" format="enum">
             <enum name="circularDrawable" value="0"/>
-            <enum name="customDrawable" value="1"/>
+            <enum name="alternativeCircularDrawable" value="1"/>
+            <enum name="useSrc" value="2"/>
         </attr>
-        <attr name="circularDrawableImage" format="reference"/>
+        <attr name="android:src"/>
         <attr name="circularDrawableColor" format="color"/>
         <attr name="circularDrawablePadding" format="dimension"/>
         <attr name="circularDrawableWidth" format="float"/>
