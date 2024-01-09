@@ -15,6 +15,7 @@ import android.util.AttributeSet
 import android.view.animation.LinearInterpolator
 import androidx.appcompat.widget.AppCompatButton
 import androidx.core.content.res.ResourcesCompat
+import androidx.core.view.setPadding
 import java.security.InvalidParameterException
 
 /**
@@ -23,8 +24,7 @@ import java.security.InvalidParameterException
  * Optional styles to customize:
  * - [R.styleable.LoadingButton_circularDrawableType]: The loader that will be shown, there is a standard circle spinning
  * loading icon, a tiled spinning circle, and the last option loads whatever src you passed in [R.styleable.LoadingButton_android_src]
- * - [R.styleable.LoadingButton_android_src]: The image to show when the type is set to useSrc
- * WARNING: Do not pass a vector asset to this component, else it will cause a [DeadObjectException]
+ * - [R.styleable.LoadingButton_android_src]: The drawable to show when the type is set to useSrc
  * - [R.styleable.LoadingButton_circularDrawablePadding]: The padding of the button for the loading icon
  * - [R.styleable.LoadingButton_circularDrawableAutoRotate]: Whether of not you want a rotation animation on
  * the drawable in case the type is set to customDrawable (default: false)
@@ -69,7 +69,6 @@ class LoadingButton : AppCompatButton {
 
     private val buttonText: String = text.toString()
     private var radius: Int = width / 2
-    private lateinit var canvas: Canvas
     private lateinit var loaderDrawable: Lazy<Drawable>
     private var padding: Int = 0
     private val animCallBack =
@@ -94,7 +93,7 @@ class LoadingButton : AppCompatButton {
                 else it.stop()
             }
             field = value
-            showLoading(value)
+            invalidate()
         }
 
     private fun setupAttributes(attributeSet: AttributeSet?, defStyle: Int){
@@ -115,7 +114,8 @@ class LoadingButton : AppCompatButton {
                         getFloat(R.styleable.LoadingButton_circularDrawableWidth, 5f)
                     lazy {
                         CircularDrawableAnimated(loaderColor, borderWidth).apply {
-                            setupPosition(padding)
+                            setPadding(padding)
+                            setupPosition()
                             start()
                         }
                     }
@@ -128,7 +128,8 @@ class LoadingButton : AppCompatButton {
                     ) as AnimationDrawable)
                     lazy {
                         img.apply {
-                            setupPosition(padding)
+                            setPadding(padding)
+                            setupPosition()
                             callback = animCallBack
                             start()
                         }
@@ -143,7 +144,12 @@ class LoadingButton : AppCompatButton {
                     val img = getDrawable(R.styleable.LoadingButton_android_src)
                         ?: ResourcesCompat.getDrawable(resources, defaultDrawableRes, null)!!
                     lazy {
-                        img.setupPosition(padding)
+                        setPadding(padding)
+                        img.setupPosition()
+                        if(img is Animatable) {
+                            img.callback = animCallBack
+                            img.start()
+                        }
                         if(rotateImage) img.toRotationAnimatedDrawable()
                         else img
                     }
@@ -153,16 +159,6 @@ class LoadingButton : AppCompatButton {
             recycle()
         }
     }
-    private fun Drawable.setupPosition(padding: Int) {
-        val offset = (width - height) / 2
-        setBounds(
-            offset + padding,
-            padding,
-            width - offset - padding,
-            height - padding
-        )
-        setPadding(padding, padding, padding, padding)
-    }
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
@@ -171,37 +167,12 @@ class LoadingButton : AppCompatButton {
     }
 
     override fun onDraw(canvas: Canvas) {
-        if(!this::canvas.isInitialized) this.canvas = canvas
-        showLoading(loading, canvas)
         super.onDraw(canvas)
-    }
-
-    private fun showLoading(loading: Boolean = this.loading, canvas: Canvas = this.canvas) {
         text = if(loading) {
             loaderDrawable.value.draw(canvas)
             ""
         } else {
             buttonText
-        }
-    }
-
-    private fun Drawable.toRotationAnimatedDrawable(duration: Long = 1000L): Drawable {
-        var angle = 0f
-        ValueAnimator.ofFloat(0f, -360f).apply {
-            interpolator = LinearInterpolator()
-            repeatCount = ValueAnimator.INFINITE
-            this.duration = duration
-            addUpdateListener { angle = it.animatedValue as Float }
-            start()
-        }
-        return object : Drawable() {
-            override fun draw(canvas: Canvas) {
-                canvas.rotate(angle, pivotX, pivotY)
-                this@toRotationAnimatedDrawable.draw(canvas)
-            }
-            override fun setAlpha(p0: Int) {}
-            override fun setColorFilter(p0: ColorFilter?) {}
-            override fun getOpacity(): Int = PixelFormat.TRANSPARENT
         }
     }
 
@@ -225,9 +196,43 @@ class LoadingButton : AppCompatButton {
     ) {
         loaderDrawable =
             lazy {
-                drawable.setupPosition(padding)
+                setPadding(padding)
+                drawable.setupPosition()
                 if(setAutoRotate) drawable.toRotationAnimatedDrawable()
                 else drawable
             }
+    }
+
+
+    private fun Drawable.setupPosition() {
+        val offset = (width - height) / 2
+        setBounds(
+            offset + padding,
+            padding,
+            width - offset - padding,
+            height - padding
+        )
+    }
+
+    private fun Drawable.toRotationAnimatedDrawable(duration: Long = 1000L): Drawable {
+        var angle = 0f
+        val anim = ValueAnimator.ofFloat(0f, -360f).apply {
+            interpolator = LinearInterpolator()
+            repeatCount = ValueAnimator.INFINITE
+            this.duration = duration
+            addUpdateListener { angle = it.animatedValue as Float }
+        }
+        return object : Drawable(), Animatable {
+            override fun draw(canvas: Canvas) {
+                canvas.rotate(angle, pivotX, pivotY)
+                this@toRotationAnimatedDrawable.draw(canvas)
+            }
+            override fun setAlpha(p0: Int) {}
+            override fun setColorFilter(p0: ColorFilter?) {}
+            override fun getOpacity(): Int = PixelFormat.TRANSPARENT
+            override fun start() = anim.start()
+            override fun stop() = anim.cancel()
+            override fun isRunning(): Boolean = anim.isRunning
+        }
     }
 }
