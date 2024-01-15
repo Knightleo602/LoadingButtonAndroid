@@ -4,7 +4,8 @@
         <attr name="circularDrawableType" format="enum">
             <enum name="circularDrawable" value="0"/>
             <enum name="alternativeCircularDrawable" value="1"/>
-            <enum name="useSrc" value="2"/>
+            <enum name="androidProgressBarIndeterminate" value="2"/>
+            <enum name="useSrc" value="3"/>
         </attr>
         <attr name="android:src"/>
         <attr name="circularDrawableColor" format="color"/>

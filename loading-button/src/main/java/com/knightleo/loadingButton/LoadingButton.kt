@@ -13,6 +13,7 @@ import android.os.DeadObjectException
 import android.os.SystemClock
 import android.util.AttributeSet
 import android.view.animation.LinearInterpolator
+import android.widget.ProgressBar
 import androidx.appcompat.widget.AppCompatButton
 import androidx.core.content.res.ResourcesCompat
 import androidx.core.view.setPadding
@@ -106,7 +107,7 @@ class LoadingButton : AppCompatButton {
         ) {
             padding =
                 getDimension(R.styleable.LoadingButton_circularDrawablePadding, 30f).toInt()
-            loaderDrawable = when(getInt(R.styleable.LoadingButton_circularDrawableType, 0)) {
+            loaderDrawable = when(getInt(R.styleable.LoadingButton_circularDrawableType, 2)) {
                 0 -> {
                     val loaderColor =
                         getColor(R.styleable.LoadingButton_circularDrawableColor, Color.GRAY)
@@ -135,7 +136,14 @@ class LoadingButton : AppCompatButton {
                         }
                     }
                 }
-                2 -> {
+                2 -> lazy {
+                    ProgressBar(context).indeterminateDrawable.apply {
+                        setPadding(padding)
+                        setupPosition()
+                        (this as Animatable).start()
+                    }
+                }
+                3 -> {
                     val rotateImage =
                         getBoolean(
                             R.styleable.LoadingButton_circularDrawableAutoRotate,
@@ -164,6 +172,12 @@ class LoadingButton : AppCompatButton {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
         val width = MeasureSpec.getSize(widthMeasureSpec)
         radius = width / 2
+    }
+
+    override fun onDetachedFromWindow() {
+        if(loaderDrawable.isInitialized())
+            (loaderDrawable.value as? Animatable)?.stop()
+        super.onDetachedFromWindow()
     }
 
     override fun onDraw(canvas: Canvas) {
